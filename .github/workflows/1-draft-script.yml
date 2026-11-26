@@ -1,0 +1,45 @@
+name: 1. 대본 초안 만들기 (AI)
+
+# 01_plan/<주차>/brief.yml 을 올리면 실행 → 02_script/<주차>/script.md 초안 생성
+on:
+  push:
+    paths:
+      - "01_plan/**/brief.yml"
+  workflow_dispatch:
+    inputs:
+      week:
+        description: "주차 (예: 2026-W49). 비우면 대본이 없는 모든 주차"
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repo-write
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install pyyaml
+
+      - name: AI 대본 초안 생성
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+        run: python scripts/draft_script.py ${{ github.event.inputs.week || '--all' }}
+
+      - name: 초안 저장(커밋)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 02_script
+          git diff --cached --quiet || git commit -m "대본 초안 생성 (검수 필요)"
+          git push

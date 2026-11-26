@@ -1,0 +1,74 @@
+name: 2. 릴스 영상 만들기
+
+# 언제 실행되나
+#  - 대본을 '승인'으로 바꾸거나 포스터를 올리면 바로 실행
+#  - 매주 월요일 08:47(한국 시간) 정기 실행 — 빠진 주차 확인 + 저장소 활동 유지
+#  - Actions 탭에서 수동 실행
+on:
+  push:
+    paths:
+      - "02_script/**/script.md"
+      - "03_design/**"
+      - "config/brand.yml"
+  schedule:
+    - cron: "47 23 * * 0"   # UTC 일 23:47 = 한국 월 08:47
+  workflow_dispatch:
+    inputs:
+      week:
+        description: "주차 (예: 2026-W49). 비우면 승인된 미제작 주차 전부"
+        required: false
+      force:
+        description: "승인 전이라도 미리보기로 제작"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repo-write
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 도구 설치 (FFmpeg, 한글 글꼴, Edge TTS)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-noto-cjk
+          pip install pyyaml edge-tts
+
+      - name: 영상 제작
+        run: |
+          cd scripts
+          if [ -n "${{ github.event.inputs.week }}" ]; then
+            python build_reel.py "${{ github.event.inputs.week }}" ${{ github.event.inputs.force == 'true' && '--force' || '' }}
+          else
+            python build_reel.py --pending
+          fi
+
+      - name: 결과 저장(커밋)
+        run: |
+          mkdir -p 04_output
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > 04_output/last_run.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 04_output
+          git diff --cached --quiet || git commit -m "릴스 영상 제작 결과"
+          git push
+
+      - name: 영상 파일 바로 받기용 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: reels
+          path: 04_output/**/reel.mp4
+          if-no-files-found: ignore
+          retention-days: 30
