@@ -62,8 +62,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add 04_output
-          git diff --cached --quiet || git commit -m "릴스 영상 제작 결과"
-          git push
+          # 그사이 다른 실행이 올린 커밋 위에 얹어서 올림 (동시에 실행될 때 거부되는 문제 방지)
+          if ! git diff --cached --quiet; then
+            git commit -m "릴스 영상 제작 결과"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
 
       - name: 영상 파일 바로 받기용 업로드
         uses: actions/upload-artifact@v4
