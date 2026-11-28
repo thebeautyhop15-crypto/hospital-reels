@@ -19,7 +19,7 @@ import stage_publish
 import stage_scenario
 import stage_script
 import stage_video
-from common import PLAN, PUBLISH, images, load_yaml, log
+from common import PLAN, PUBLISH, VIDEO, images, load_yaml, log
 
 
 def weeks() -> list[str]:
@@ -35,9 +35,14 @@ def produce(week: str, use_ai: bool, final: bool) -> bool:
     sc = stage_scenario.build(week)["장면"]
     tl = stage_audio.build(week, sc)
     video = stage_video.build(week, sc, tl, force_final=final)
-    ok = qa.check(video, tl["음성"] == "실제")
+    ok = qa.check(video, tl["음성"] == "실제") if video else "확인필요" not in _qa_text(week)
     stage_publish.queue(week)
     return ok
+
+
+def _qa_text(week: str) -> str:
+    p = VIDEO / week / "qa.txt"
+    return p.read_text(encoding="utf-8") if p.exists() else ""
 
 
 def main() -> None:

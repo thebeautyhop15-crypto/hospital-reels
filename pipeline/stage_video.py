@@ -36,7 +36,8 @@ def srt(tl: dict, path: Path) -> None:
     path.write_text("\n".join(rows), encoding="utf-8")
 
 
-def build(week: str, scenes: list[dict], tl: dict, force_final: bool = False) -> Path:
+def build(week: str, scenes: list[dict], tl: dict, force_final: bool = False) -> Path | None:
+    """새로 만든 영상 경로. 바뀐 것이 없어 건너뛰면 None."""
     meta = parse_script(SCRIPT / week / "script.md")["meta"]
     final = force_final or str(meta.get("상태", "")).strip() == APPROVED
     out = VIDEO / week
@@ -44,9 +45,10 @@ def build(week: str, scenes: list[dict], tl: dict, force_final: bool = False) ->
     name = "reel.mp4" if final else "preview.mp4"
     fp = fingerprint(SCENARIO / week / "scenario.yml", AUDIO / week / "timeline.json", AUDIO / week / "mix.m4a",
                      PLAN / week / "source", CONFIG, FONTS) + ("F" if final else "P")
-    if stage_done(week, "video", fp) and (out / name).exists():
+    # 바뀐 것이 없으면 다시 만들지 않음. 미리보기는 저장소에 올리지 않으므로(용량) 기록만 확인
+    if stage_done(week, "video", fp) and ((out / name).exists() or not final):
         log(f"영상: 바뀐 것 없음 → {name} 유지")
-        return out / name
+        return None
     imgs = images(week)
     ctx = renderer.Ctx(brand=brand(), style=style(), fonts=fonts(), images=imgs, seed=sum(map(ord, week)))
     ctx.preview = not final
