@@ -1,0 +1,59 @@
+name: 2. 인스타그램 발행
+
+# 06_publish/<주차>/post.yml 이 '대기'이고 예약일이 지난 영상을 발행
+# - 지금은 수동 실행만. 발행 요일·시각이 정해지면 schedule 을 켭니다.
+# - 같은 주차는 한 번만 발행 (post.yml 상태가 '발행완료'로 바뀜)
+on:
+  workflow_dispatch:
+    inputs:
+      week:
+        description: "주차 (예: 2026-W49). 비우면 발행할 차례인 것 전부"
+        required: false
+      go:
+        description: "실제로 발행 (끄면 토큰·영상 주소·캡션 점검만)"
+        type: boolean
+        default: false
+  # schedule:
+  #   - cron: "13 1 * * 2"    # 예: 매주 화요일 10:13(한국 시간)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repo-write
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - run: pip install -q pyyaml pillow numpy
+
+      - name: 발행
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ vars.IG_USER_ID }}
+          IG_API_VERSION: ${{ vars.IG_API_VERSION }}
+          PAGES_BASE: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+        run: |
+          python pipeline/run.py --publish \
+            ${{ github.event.inputs.week && format('--week {0}', github.event.inputs.week) || '' }} \
+            ${{ (github.event_name == 'schedule' || github.event.inputs.go == 'true') && '--go' || '' }}
+
+      - name: 발행 기록 저장(커밋)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add 06_publish
+          if ! git diff --cached --quiet; then
+            git commit -m "인스타그램 발행 기록 [자동]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi

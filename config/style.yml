@@ -1,0 +1,48 @@
+# 영상 스타일 설정 — 폰트 테마·효과·자막 방식
+# 모든 폰트는 상업적 이용이 가능한 SIL Open Font License(OFL) 폰트입니다. (assets/fonts/licenses 참고)
+# 브랜드 설정(config/brand.yml)의 '테마' 값으로 아래 테마 중 하나를 고릅니다.
+
+기본테마: 럭셔리
+
+테마:
+  럭셔리:        # 고급 클리닉 — 명조 제목 + 단단한 고딕 본문
+    후킹: {폰트: BlackHanSans-Regular.ttf, 크기: 112}
+    제목: {폰트: NanumMyeongjo-ExtraBold.ttf, 크기: 96}
+    본문: {폰트: Pretendard-Bold.otf, 크기: 84}
+    자막: {폰트: Pretendard-ExtraBold.otf, 크기: 62}
+    강조: {폰트: Pretendard-Black.otf, 크기: 90}
+    보조: {폰트: Pretendard-SemiBold.otf, 크기: 40}
+  임팩트:        # 이벤트·할인 공지 등 강한 인상
+    후킹: {폰트: BlackHanSans-Regular.ttf, 크기: 120}
+    제목: {폰트: DoHyeon-Regular.ttf, 크기: 104}
+    본문: {폰트: Pretendard-ExtraBold.otf, 크기: 86}
+    자막: {폰트: Pretendard-Black.otf, 크기: 64}
+    강조: {폰트: BlackHanSans-Regular.ttf, 크기: 96}
+    보조: {폰트: Pretendard-SemiBold.otf, 크기: 40}
+  부드러움:      # 피부관리·상담 안내 등 편안한 톤
+    후킹: {폰트: Jua-Regular.ttf, 크기: 112}
+    제목: {폰트: GowunBatang-Bold.ttf, 크기: 92}
+    본문: {폰트: GowunDodum-Regular.ttf, 크기: 82}
+    자막: {폰트: Pretendard-Bold.otf, 크기: 60}
+    강조: {폰트: Jua-Regular.ttf, 크기: 92}
+    보조: {폰트: Pretendard-Regular.otf, 크기: 40}
+
+효과:
+  전환길이: 0.42             # 장면 전환 시간(초)
+  전환목록: [smoothup, circleopen, slideleft, fadewhite, zoomin, smoothleft, wipetl, radial, coverup, hblur, revealdown, dissolve]
+  빛반사: true               # 포스터 위를 지나가는 빛
+  빛번짐: true               # 화면 가장자리의 따뜻한 빛
+  입자: true                 # 천천히 떠오르는 빛 입자
+  필름질감: 0.035            # 0이면 끔
+  비네팅: 0.35               # 가장자리 어둡게 (0~1)
+
+자막:
+  방식: 단어강조             # 단어강조(말하는 단어가 색으로 차오름) | 팝업(줄 단위로 튀어나옴)
+  세로위치: 0.60             # 화면 높이 대비 자막 중심 (안전영역 안)
+  강조색: 강조색             # brand.yml 의 색 이름 또는 #RRGGBB
+
+음향:
+  배경음: 자동               # 자동(직접 합성한 잔잔한 배경음) | 파일명(assets/bgm/) | 없음
+  배경음크기: 0.22
+  효과음: true               # 전환 '휙'·후킹 '팝' 효과음 (직접 합성)
+  목표음량: -14              # LUFS (인스타·페이스북 권장 수준)

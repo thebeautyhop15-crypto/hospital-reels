@@ -1,0 +1,92 @@
+name: 1. 릴스 자동 제작
+
+# 언제 실행되나
+#  - 00_inbox 에 사진을 올리면 → 기획·대본·시나리오·음향·영상(검수용 미리보기)까지 자동
+#  - 대본을 '승인'으로 바꾸면 → 확정 영상(reel.mp4) + 발행 대기열 등록
+#  - 기획서·시나리오·브랜드·스타일을 고쳐도 바뀐 단계부터 다시 제작
+#  - 매주 월요일 08:47(한국 시간) 정기 점검 / Actions 탭에서 수동 실행
+on:
+  push:
+    paths:
+      - "00_inbox/**"
+      - "01_plan/**"
+      - "02_script/**"
+      - "03_scenario/**"
+      - "config/**"
+      - "assets/**"
+      - "pipeline/**"
+  schedule:
+    - cron: "47 23 * * 0"
+  workflow_dispatch:
+    inputs:
+      week:
+        description: "주차만 다시 (예: 2026-W49). 비우면 전체 확인"
+        required: false
+      final:
+        description: "승인 전이라도 확정본으로 제작 (시험용)"
+        type: boolean
+        default: false
+      save:
+        description: "결과를 저장소에 저장(커밋). 끄면 시험 실행 — 결과는 Artifacts 에서만 받기"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: repo-write
+  cancel-in-progress: false
+
+jobs:
+  make:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: 도구 설치 (FFmpeg, Edge TTS, 이미지 처리)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          pip install -q pyyaml edge-tts pillow numpy
+
+      - name: 제작 (기획 → 대본 → 시나리오 → 음향 → 영상 → 품질점검)
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          REQUIRE_TTS: "1"
+        run: |
+          python pipeline/run.py \
+            ${{ github.event.inputs.week && format('--week {0}', github.event.inputs.week) || '' }} \
+            ${{ github.event.inputs.final == 'true' && '--final' || '' }}
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > logs/last_run.txt
+
+      - name: 미리보기·영상 내려받기용 업로드
+        uses: actions/upload-artifact@v6
+        with:
+          name: reels-${{ github.run_number }}
+          path: |
+            05_video/**/*.mp4
+            05_video/**/cover.jpg
+            05_video/**/qa_sheet.jpg
+            05_video/**/qa.txt
+          if-no-files-found: ignore
+          retention-days: 30
+
+      - name: 결과 저장(커밋)
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.save == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A 00_inbox 01_plan 02_script 03_scenario 04_audio 05_video 06_publish logs
+          if ! git diff --cached --quiet; then
+            git commit -m "릴스 제작 결과 [자동]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
